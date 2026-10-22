@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# LeRobot imports installed distributions whose name starts with "lerobot_policy_" (keep the underscores).
+name = "lerobot_policy_proprio"
+version = "0.1.0"
+description = "Proprio for LeRobot: faster policy ticks with actions bit-identical to the original"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "ZenEdgeX", email = "hello@zenedgex.in" }]
+dependencies = ["lerobot>=0.6"]
+keywords = ["lerobot", "robotics", "vla", "inference", "smolvla", "pi0"]
+classifiers = ["Programming Language :: Python :: 3", "Topic :: Scientific/Engineering :: Artificial Intelligence"]
+
+[project.urls]
+Homepage = "https://github.com/zenedgex/lerobot-policy-proprio"
+Engine = "https://github.com/zenedgex/proprio-releases"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
