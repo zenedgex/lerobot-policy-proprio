@@ -41,7 +41,12 @@ class FakeEngine:
         orig = self.policy._proprio_hook.originals["predict_action_chunk"]
         engine = self
 
+        with torch.inference_mode():  # like Proprio: buffers made in inference mode, written on every tick
+            buf = torch.zeros(2, 4)
+
         def replay(batch, noise=None):
+            if not engine.bypassed:
+                buf.copy_(batch["x"])  # refused outside inference mode
             out = orig(batch, noise)
             return out if engine.bypassed else out + engine.drift
 
@@ -174,3 +179,15 @@ def test_lerobot_discovers_the_plugin_by_distribution_name():
     from importlib.metadata import distribution
 
     assert distribution("lerobot_policy_proprio").metadata["Name"].startswith("lerobot_policy_")
+
+
+def test_callers_outside_inference_mode_get_an_editable_tensor(gpu):
+    """LeRobot's async policy server calls the policy outside inference mode."""
+    gpu(drift=0.0)
+    p = lpp.attach(FakePolicy().eval(), "x")
+    with torch.inference_mode():
+        p.predict_action_chunk(batch())  # prepared
+    assert p._proprio_hook.state == "on"
+    with torch.no_grad():
+        out = p.predict_action_chunk(batch())
+    out.mul_(2)  # LeRobot post-processing may edit the chunk in place

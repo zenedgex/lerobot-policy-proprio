@@ -57,6 +57,15 @@ class _Hook:
         if self.state == "eager" and self.engine is not None:
             with self.engine.bypass():
                 return orig(*args, **kwargs)
+        if self.state == "on":
+            import torch
+
+            if not torch.is_inference_mode_enabled():
+                # Proprio's prepared tick runs in inference mode; callers outside it (LeRobot's async
+                # policy server) get an ordinary tensor back that they may modify.
+                with torch.inference_mode():
+                    out = orig(*args, **kwargs)
+                return out.clone() if isinstance(out, torch.Tensor) else out
         return orig(*args, **kwargs)
 
     def prepare(self, batch) -> None:
