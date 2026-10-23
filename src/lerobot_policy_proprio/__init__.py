@@ -23,7 +23,7 @@ import os
 import sys
 import time
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 log = logging.getLogger("proprio")
 
@@ -40,6 +40,9 @@ def _training() -> bool:
 
 
 # ----------------------------------------------------------------------------------- per-policy
+_CHECKED_KWARGS = {"batch", "noise"}
+
+
 class _Hook:
     """State of one loaded policy: new -> preparing -> on | eager."""
 
@@ -54,7 +57,10 @@ class _Hook:
         orig = self.originals[name]
         if self.state == "new" and not self.policy.training:
             self.prepare(args[0] if args else kwargs.get("batch"))
-        if self.state == "eager" and self.engine is not None:
+        # Calls carrying arguments the preparation did not check (for example real-time chunking
+        # guidance) run exactly as LeRobot runs them.
+        unchecked = set(kwargs) - _CHECKED_KWARGS or len(args) > 1
+        if (self.state == "eager" or (self.state == "on" and unchecked)) and self.engine is not None:
             with self.engine.bypass():
                 return orig(*args, **kwargs)
         if self.state == "on":

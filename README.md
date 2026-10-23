@@ -4,8 +4,7 @@ Install one package and LeRobot runs your policy faster, with **actions bit-iden
 original**. No code changes, no new commands, no robot-side changes.
 
 ```sh
-pip install lerobot_policy_proprio
-pip install proprio-0.1.2-cp312-cp312-manylinux*_x86_64.whl   # the engine, from https://github.com/zenedgex/proprio-releases
+pip install lerobot_policy_proprio     # brings the Proprio engine on Linux
 ```
 
 Then run LeRobot as you already do:
@@ -49,6 +48,8 @@ https://huggingface.co/datasets/ZenEdgeX/proprio-certificates
   plugin leaves LeRobot unchanged.
 - **Turn it off** for one run: `PROPRIO_ENGINE=off lerobot-rollout ...`
 - **Training is never touched.** The plugin only acts on policies loaded for inference.
+- **Unverified call types run unchanged.** Calls with extra arguments (for example real-time chunking
+  guidance) run exactly as LeRobot runs them.
 - **Same random stream:** a run with Proprio produces the same actions as the same run without it.
 - **Async inference:** LeRobot's policy server does not load plugins yet (a change has been
   proposed upstream). Until then, use `proprio lerobot-server` (same flags) on the GPU machine.

@@ -21,7 +21,7 @@ class FakePolicy(torch.nn.Module):
     def from_pretrained(cls, pretrained_name_or_path, **kwargs):
         return cls().eval()
 
-    def predict_action_chunk(self, batch, noise=None):
+    def predict_action_chunk(self, batch, noise=None, **guidance):
         return self.lin(batch["x"]) + 0.01 * torch.randn(batch["x"].shape[0], 3)  # samples its own noise
 
     def select_action(self, batch):
@@ -44,10 +44,10 @@ class FakeEngine:
         with torch.inference_mode():  # like Proprio: buffers made in inference mode, written on every tick
             buf = torch.zeros(2, 4)
 
-        def replay(batch, noise=None):
+        def replay(batch, noise=None, **guidance):
             if not engine.bypassed:
                 buf.copy_(batch["x"])  # refused outside inference mode
-            out = orig(batch, noise)
+            out = orig(batch, noise, **guidance)
             return out if engine.bypassed else out + engine.drift
 
         self.policy._proprio_hook.originals["predict_action_chunk"] = replay
@@ -191,3 +191,19 @@ def test_callers_outside_inference_mode_get_an_editable_tensor(gpu):
     with torch.no_grad():
         out = p.predict_action_chunk(batch())
     out.mul_(2)  # LeRobot post-processing may edit the chunk in place
+
+
+def test_calls_with_unchecked_arguments_run_the_original_path(gpu):
+    """LeRobot's real-time chunking passes guidance arguments the preparation never checked."""
+    engines = gpu(drift=0.0)
+    p = lpp.attach(FakePolicy().eval(), "x")
+    with torch.inference_mode():
+        p.predict_action_chunk(batch())
+    assert p._proprio_hook.state == "on"
+    engines[0].drift = 1.0  # anything not run through bypass would now differ
+    q = FakePolicy()
+    torch.manual_seed(5)
+    with torch.inference_mode():
+        a = p.predict_action_chunk(batch(), inference_delay=3)
+    torch.manual_seed(5)
+    assert torch.equal(a, q.predict_action_chunk(batch(), inference_delay=3))
